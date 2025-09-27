@@ -80,27 +80,71 @@ class ScriptBuilder {
         const tooltip = document.getElementById('tooltip');
         const tooltipTriggers = document.querySelectorAll('[data-tooltip]');
 
+        console.log('Setting up tooltips for', tooltipTriggers.length, 'elements');
+
         tooltipTriggers.forEach(trigger => {
             trigger.addEventListener('mouseenter', (e) => {
                 const text = e.target.getAttribute('data-tooltip');
-                tooltip.textContent = text;
-                tooltip.classList.add('show');
-                this.positionTooltip(e, tooltip);
+                if (text) {
+                    tooltip.textContent = text;
+                    tooltip.style.display = 'block';
+                    tooltip.classList.add('show');
+                    this.positionTooltip(e, tooltip);
+                }
             });
 
             trigger.addEventListener('mouseleave', () => {
                 tooltip.classList.remove('show');
+                setTimeout(() => {
+                    if (!tooltip.classList.contains('show')) {
+                        tooltip.style.display = 'none';
+                    }
+                }, 200);
             });
 
             trigger.addEventListener('mousemove', (e) => {
-                this.positionTooltip(e, tooltip);
+                if (tooltip.classList.contains('show')) {
+                    this.positionTooltip(e, tooltip);
+                }
             });
         });
     }
 
     positionTooltip(e, tooltip) {
-        const x = e.clientX + 10;
-        const y = e.clientY - 10;
+        // Set initial position to measure tooltip dimensions
+        tooltip.style.left = '0px';
+        tooltip.style.top = '0px';
+        
+        const rect = tooltip.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Get the icon's position and dimensions
+        const iconRect = e.target.getBoundingClientRect();
+        const iconCenterX = iconRect.left + (iconRect.width / 2);
+        const iconCenterY = iconRect.top + (iconRect.height / 2);
+        
+        // Center tooltip horizontally on the icon
+        let x = iconCenterX - (rect.width / 2);
+        let y = iconCenterY - rect.height - 10; // Position above the icon
+        
+        // Adjust horizontal position if tooltip would go off-screen
+        if (x < 10) {
+            x = 10;
+        } else if (x + rect.width > viewportWidth - 10) {
+            x = viewportWidth - rect.width - 10;
+        }
+        
+        // Adjust vertical position if tooltip would go off-screen
+        let isBelow = false;
+        if (y < 10) {
+            y = iconCenterY + iconRect.height + 10; // Position below the icon instead
+            isBelow = true;
+        }
+        
+        // Update arrow direction based on position
+        tooltip.classList.toggle('below', isBelow);
+        
         tooltip.style.left = x + 'px';
         tooltip.style.top = y + 'px';
     }
@@ -651,7 +695,9 @@ class ScriptBuilder {
 
 // Initialize the script builder when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing Script Builder...');
     window.scriptBuilder = new ScriptBuilder();
+    console.log('Script Builder initialized successfully');
 });
 
 // Handle dynamic content in action config

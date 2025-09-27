@@ -265,12 +265,16 @@ body {
     font-size: 0.8rem;
     cursor: help;
     opacity: 0.7;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    padding: 2px;
+    border-radius: 50%;
 }
 
 .fa-info-circle:hover {
     opacity: 1;
     color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+    transform: scale(1.1);
 }
 
 /* Buttons */
@@ -445,21 +449,41 @@ body {
 
 /* Tooltip */
 .tooltip {
-    position: absolute;
+    position: fixed;
     background: rgba(0, 0, 0, 0.9);
     color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    max-width: 250px;
-    z-index: 1000;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    max-width: 280px;
+    z-index: 10000;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
 .tooltip.show {
     opacity: 1;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Arrow pointing up when tooltip is below the icon */
+.tooltip.below::after {
+    top: -12px;
+    border-top-color: transparent;
+    border-bottom-color: rgba(0, 0, 0, 0.9);
 }
 
 /* Responsive Design */
