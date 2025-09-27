@@ -475,34 +475,139 @@ class ScriptBuilder {
 
     generateScript() {
         const config = this.getScriptConfig();
-        const script = this.buildScript(config);
         
-        // Update the generated script tab
-        document.getElementById('scriptOutput').textContent = script;
+        // Validate configuration
+        const validation = this.validateConfig(config);
+        if (!validation.isValid) {
+            this.showNotification(validation.message, 'error');
+            return;
+        }
         
-        // Generate minified version (basic minification)
-        const minified = this.minifyScript(script);
-        document.getElementById('minifiedOutput').textContent = minified;
-        
-        // Generate documentation
-        const documentation = this.generateDocumentation(config);
-        document.getElementById('docOutput').innerHTML = documentation;
-        
-        // Trigger syntax highlighting if available
-        if (typeof Prism !== 'undefined') {
-            Prism.highlightAll();
+        try {
+            const script = this.buildScript(config);
+            
+            // Update the generated script tab
+            document.getElementById('scriptOutput').textContent = script;
+            
+            // Generate minified version (basic minification)
+            const minified = this.minifyScript(script);
+            document.getElementById('minifiedOutput').textContent = minified;
+            
+            // Generate documentation
+            const documentation = this.generateDocumentation(config);
+            document.getElementById('docOutput').innerHTML = documentation;
+            
+            // Trigger syntax highlighting if available
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightAll();
+            }
+            
+            this.showNotification('Script generated successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error generating script:', error);
+            this.showNotification('Error generating script: ' + error.message, 'error');
         }
     }
 
+    validateConfig(config) {
+        // Basic validation
+        if (!config.selector && config.selectorType !== 'advanced') {
+            return {
+                isValid: false,
+                message: 'Please enter a CSS selector or use the Advanced Builder'
+            };
+        }
+        
+        // Action-specific validation
+        if (config.actionType) {
+            switch (config.actionType) {
+                case 'modify':
+                    if (!config.modifyValue) {
+                        return {
+                            isValid: false,
+                            message: 'Please enter a value for the modification'
+                        };
+                    }
+                    break;
+                case 'add':
+                    if (!config.addContent) {
+                        return {
+                            isValid: false,
+                            message: 'Please enter content for the new element'
+                        };
+                    }
+                    break;
+                case 'style':
+                    if (!config.cssProperties) {
+                        return {
+                            isValid: false,
+                            message: 'Please enter CSS properties to apply'
+                        };
+                    }
+                    break;
+                case 'event':
+                    if (!config.eventCode) {
+                        return {
+                            isValid: false,
+                            message: 'Please enter JavaScript code for the event handler'
+                        };
+                    }
+                    break;
+                case 'custom':
+                    if (!config.customCode) {
+                        return {
+                            isValid: false,
+                            message: 'Please enter custom JavaScript code'
+                        };
+                    }
+                    break;
+            }
+        }
+        
+        return { isValid: true };
+    }
+
     getScriptConfig() {
-        // This will be implemented to gather all configuration from the UI
         return {
-            selector: document.getElementById('cssSelector').value,
+            selector: document.getElementById('cssSelector').value.trim(),
             selectorType: document.getElementById('selectorType').value,
-            fallbackSelectors: document.getElementById('fallbackSelectors').value.split('\n').filter(s => s.trim()),
+            fallbackSelectors: document.getElementById('fallbackSelectors').value
+                .split('\n')
+                .map(s => s.trim())
+                .filter(s => s.length > 0),
             features: this.getSelectedFeatures(),
             actionType: document.getElementById('actionType').value,
-            // Add more configuration gathering here
+            
+            // Action-specific configurations
+            modifyProperty: document.getElementById('modifyProperty')?.value || '',
+            modifyValue: document.getElementById('modifyValue')?.value || '',
+            customAttribute: document.getElementById('customAttribute')?.value || '',
+            
+            elementType: document.getElementById('elementType')?.value || '',
+            addPosition: document.getElementById('addPosition')?.value || '',
+            addContent: document.getElementById('addContent')?.value || '',
+            addClasses: document.getElementById('addClasses')?.value || '',
+            
+            removeAction: document.getElementById('removeAction')?.value || '',
+            removeValue: document.getElementById('removeValue')?.value || '',
+            
+            cssProperties: document.getElementById('cssProperties')?.value || '',
+            importantStyles: document.getElementById('importantStyles')?.checked || false,
+            
+            eventType: document.getElementById('eventType')?.value || '',
+            eventCode: document.getElementById('eventCode')?.value || '',
+            preventDefault: document.getElementById('preventDefault')?.checked || false,
+            
+            widgetType: document.getElementById('widgetType')?.value || '',
+            widgetConfig: document.getElementById('widgetConfig')?.value || '',
+            widgetContainer: document.getElementById('widgetContainer')?.value || '',
+            
+            formAction: document.getElementById('formAction')?.value || '',
+            formConfig: document.getElementById('formConfig')?.value || '',
+            
+            customCode: document.getElementById('customCode')?.value || '',
+            wrapInTryCatch: document.getElementById('wrapInTryCatch')?.checked || false
         };
     }
 
@@ -518,24 +623,802 @@ class ScriptBuilder {
     }
 
     buildScript(config) {
-        // This is a placeholder - the actual script generation will be implemented
+        const scriptParts = [];
+        
+        // Generate header documentation
+        scriptParts.push(this.generateHeader(config));
+        
+        // Generate utility functions
+        scriptParts.push(this.generateUtilityFunctions(config));
+        
+        // Generate main function
+        scriptParts.push(this.generateMainFunction(config));
+        
+        // Generate wrapper with all selected features
+        scriptParts.push(this.generateWrapper(config));
+        
+        return scriptParts.join('\n\n');
+    }
+
+    generateHeader(config) {
+        const now = new Date();
+        const dealerId = this.extractDealerId();
+        const actionDescription = this.getActionDescription(config);
+        
         return `/**
- * Generated Script - GCP Script Builder
+ * ${actionDescription} - GCP Script Builder
  * 
  * AUTO-GENERATED CODE - DO NOT EDIT MANUALLY
- * Generated on: ${new Date().toISOString()}
+ * Generated on: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}
+ * Dealer ID: ${dealerId}
+ * 
+ * PURPOSE:
+ * ${this.generatePurposeDescription(config)}
+ * 
+ * KEY FEATURES:
+${this.generateFeaturesList(config)}
+ * 
+ * TECHNICAL DETAILS:
+ * - Target Selector: ${config.selector || 'Not specified'}
+ * - Selector Type: ${config.selectorType}
+ * - Action Type: ${config.actionType || 'None'}
+ * 
+ * USAGE:
+ * This script should be injected into the browser console or added to the website.
+ * It will automatically execute based on the configured settings.
+ * 
+ * @version 1.0
+ * @author GCP Script Builder
+ * @compatible Modern browsers with ES6+ support
+ */`;
+    }
+
+    generateUtilityFunctions(config) {
+        const utilities = [];
+        
+        // Always include selector validation
+        utilities.push(`/**
+ * Validates and finds elements using the configured selector with fallbacks
+ * @param {string} primarySelector - The main CSS selector
+ * @param {Array} fallbackSelectors - Array of fallback selectors
+ * @returns {Element|null} - Found element or null
  */
+function findTargetElement(primarySelector, fallbackSelectors = []) {
+    try {
+        // Try primary selector first
+        if (primarySelector) {
+            const element = document.querySelector(primarySelector);
+            if (element) {
+                ${config.features.debugging ? 'console.log("✅ Found element with primary selector:", primarySelector, element);' : ''}
+                return element;
+            }
+            ${config.features.debugging ? 'console.warn("⚠️ Primary selector found no elements:", primarySelector);' : ''}
+        }
+        
+        // Try fallback selectors
+        for (const fallback of fallbackSelectors) {
+            if (fallback.trim()) {
+                const element = document.querySelector(fallback.trim());
+                if (element) {
+                    ${config.features.debugging ? 'console.log("✅ Found element with fallback selector:", fallback, element);' : ''}
+                    return element;
+                }
+                ${config.features.debugging ? 'console.warn("⚠️ Fallback selector found no elements:", fallback);' : ''}
+            }
+        }
+        
+        ${config.features.debugging ? 'console.error("❌ No elements found with any selector");' : ''}
+        return null;
+    } catch (error) {
+        ${config.features.errorHandling ? 'console.error("Error finding target element:", error);' : ''}
+        return null;
+    }
+}`);
 
-// This is a placeholder for the generated script
-// The actual implementation will create a complete script based on configuration
+        // Add page detection utilities if needed
+        if (config.features.vdpDetection || config.features.srpDetection || config.features.customPageDetection) {
+            utilities.push(this.generatePageDetectionFunctions(config));
+        }
 
-(function() {
-    'use strict';
+        // Add debouncing utility if needed
+        if (config.features.debouncing) {
+            utilities.push(`/**
+ * Debouncing utility to prevent excessive function calls
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} - Debounced function
+ */
+function debounce(func, wait = 1000) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}`);
+        }
+
+        // Add cleanup utilities if needed
+        if (config.features.cleanup) {
+            utilities.push(`/**
+ * Cleanup function to remove event listeners and intervals
+ */
+let cleanupFunctions = [];
+function addCleanupFunction(fn) {
+    cleanupFunctions.push(fn);
+}
+
+function cleanup() {
+    ${config.features.debugging ? 'console.log("🧹 Cleaning up resources...");' : ''}
+    cleanupFunctions.forEach(fn => {
+        try {
+            fn();
+        } catch (error) {
+            ${config.features.errorHandling ? 'console.error("Error during cleanup:", error);' : ''}
+        }
+    });
+    cleanupFunctions = [];
+}`);
+        }
+
+        return utilities.join('\n\n');
+    }
+
+    generateMainFunction(config) {
+        const functionName = this.generateFunctionName(config);
+        const actionCode = this.generateActionCode(config);
+        
+        return `/**
+ * Main function that performs the configured action
+ */
+function ${functionName}() {
+    ${config.features.errorHandling ? 'try {' : ''}
+        ${config.features.debugging ? `console.log("🚀 Starting ${functionName}...");` : ''}
+        
+        // Find target element(s)
+        const targetElement = findTargetElement(
+            "${config.selector || ''}",
+            ${JSON.stringify(config.fallbackSelectors || [])}
+        );
+        
+        if (!targetElement) {
+            ${config.features.debugging ? 'console.error("❌ Target element not found. Script will not execute.");' : ''}
+            return false;
+        }
+        
+        ${config.features.elementHighlighting ? this.generateHighlightCode() : ''}
+        
+        ${actionCode}
+        
+        ${config.features.debugging ? `console.log("✅ ${functionName} completed successfully");` : ''}
+        return true;
+        
+    ${config.features.errorHandling ? `} catch (error) {
+        ${config.features.consoleLogging ? 'console.error("Error in ' + functionName + ':", error);' : ''}
+        return false;
+    }` : ''}
+}`;
+    }
+
+    generateActionCode(config) {
+        const actionType = config.actionType;
+        
+        switch (actionType) {
+            case 'modify':
+                return this.generateModifyCode(config);
+            case 'add':
+                return this.generateAddCode(config);
+            case 'remove':
+                return this.generateRemoveCode(config);
+            case 'style':
+                return this.generateStyleCode(config);
+            case 'event':
+                return this.generateEventCode(config);
+            case 'widget':
+                return this.generateWidgetCode(config);
+            case 'form':
+                return this.generateFormCode(config);
+            case 'custom':
+                return this.generateCustomCode(config);
+            default:
+                return `        // No action configured
+        ${config.features.debugging ? 'console.log("ℹ️ No action specified - element found successfully");' : ''}`;
+        }
+    }
+
+    generateWrapper(config) {
+        const functionName = this.generateFunctionName(config);
+        const wrapperParts = [];
+        
+        // Start wrapper
+        wrapperParts.push('// Self-executing wrapper with comprehensive feature support');
+        wrapperParts.push('(function() {');
+        wrapperParts.push("    'use strict';");
+        wrapperParts.push('');
+        
+        // Prevent duplicates
+        if (config.features.preventDuplicates) {
+            const scriptId = this.generateScriptId(config);
+            wrapperParts.push(`    // Prevent multiple script executions`);
+            wrapperParts.push(`    if (window.${scriptId}) {`);
+            wrapperParts.push(`        ${config.features.debugging ? 'console.log("Script already running, skipping execution");' : ''}`);
+            wrapperParts.push(`        return;`);
+            wrapperParts.push(`    }`);
+            wrapperParts.push(`    window.${scriptId} = true;`);
+            wrapperParts.push('');
+        }
+        
+        // Add SPA navigation handling
+        if (config.features.spaFriendly || config.features.urlMonitoring) {
+            wrapperParts.push(this.generateNavigationHandling(config, functionName));
+        }
+        
+        // Add mutation observer
+        if (config.features.mutationObserver) {
+            wrapperParts.push(this.generateMutationObserver(config, functionName));
+        }
+        
+        // Add interval monitoring
+        if (config.features.intervalMonitoring) {
+            wrapperParts.push(this.generateIntervalMonitoring(config, functionName));
+        }
+        
+        // Main execution logic
+        wrapperParts.push(`    // Main execution function`);
+        wrapperParts.push(`    function executeScript() {`);
+        
+        if (config.features.debouncing) {
+            wrapperParts.push(`        const debouncedExecution = debounce(${functionName}, 1000);`);
+            wrapperParts.push(`        debouncedExecution();`);
+        } else {
+            wrapperParts.push(`        ${functionName}();`);
+        }
+        
+        wrapperParts.push(`    }`);
+        wrapperParts.push('');
+        
+        // DOM ready handling
+        if (config.features.domReady) {
+            wrapperParts.push(`    // DOM ready state handling`);
+            wrapperParts.push(`    if (document.readyState === 'loading') {`);
+            wrapperParts.push(`        document.addEventListener('DOMContentLoaded', executeScript);`);
+            wrapperParts.push(`    } else {`);
+            wrapperParts.push(`        executeScript();`);
+            wrapperParts.push(`    }`);
+        } else {
+            wrapperParts.push(`    // Execute immediately`);
+            wrapperParts.push(`    executeScript();`);
+        }
+        
+        // Add additional execution attempts for dynamic content
+        if (config.features.asyncLoading) {
+            wrapperParts.push('');
+            wrapperParts.push(`    // Additional attempts for dynamically loaded content`);
+            wrapperParts.push(`    setTimeout(executeScript, 1000);`);
+            wrapperParts.push(`    setTimeout(executeScript, 3000);`);
+        }
+        
+        // Cleanup on page unload
+        if (config.features.cleanup) {
+            wrapperParts.push('');
+            wrapperParts.push(`    // Cleanup on page unload`);
+            wrapperParts.push(`    window.addEventListener('beforeunload', cleanup);`);
+        }
+        
+        // Close wrapper
+        wrapperParts.push('');
+        wrapperParts.push('})();');
+        
+        return wrapperParts.join('\n');
+    }
+
+    // Helper functions for script generation
+
+    extractDealerId() {
+        // Try to extract dealer ID from current URL or generate a random one
+        const urlMatch = window.location.hostname.match(/(\d{3,4})/);
+        return urlMatch ? urlMatch[1] : Math.floor(Math.random() * 9000) + 1000;
+    }
+
+    getActionDescription(config) {
+        const actionType = config.actionType;
+        const actionMap = {
+            'modify': 'Element Modification Script',
+            'add': 'Element Addition Script', 
+            'remove': 'Element Removal Script',
+            'style': 'CSS Styling Script',
+            'event': 'Event Handler Script',
+            'widget': 'Widget Integration Script',
+            'form': 'Form Handler Script',
+            'custom': 'Custom JavaScript Script'
+        };
+        return actionMap[actionType] || 'General Purpose Script';
+    }
+
+    generatePurposeDescription(config) {
+        let purpose = `This script targets elements using "${config.selector || 'unspecified selector'}" and `;
+        
+        switch (config.actionType) {
+            case 'modify':
+                purpose += 'modifies their properties or content.';
+                break;
+            case 'add':
+                purpose += 'adds new elements to the page.';
+                break;
+            case 'remove':
+                purpose += 'removes elements or their content.';
+                break;
+            case 'style':
+                purpose += 'applies custom CSS styling.';
+                break;
+            case 'event':
+                purpose += 'adds interactive event listeners.';
+                break;
+            case 'widget':
+                purpose += 'integrates third-party widgets.';
+                break;
+            case 'form':
+                purpose += 'handles form submissions and data.';
+                break;
+            case 'custom':
+                purpose += 'executes custom JavaScript code.';
+                break;
+            default:
+                purpose += 'performs general page modifications.';
+        }
+        
+        return purpose;
+    }
+
+    generateFeaturesList(config) {
+        const enabledFeatures = Object.entries(config.features)
+            .filter(([key, value]) => value)
+            .map(([key, value]) => ` * ✅ ${this.formatFeatureName(key)}`);
+        
+        return enabledFeatures.length > 0 ? enabledFeatures.join('\n') : ' * ✅ Basic functionality';
+    }
+
+    generateFunctionName(config) {
+        const actionType = config.actionType || 'general';
+        const actionMap = {
+            'modify': 'modifyTargetElement',
+            'add': 'addElementToPage',
+            'remove': 'removeTargetElement', 
+            'style': 'applyCustomStyling',
+            'event': 'addEventHandlers',
+            'widget': 'insertWidget',
+            'form': 'handleFormSubmission',
+            'custom': 'executeCustomCode'
+        };
+        return actionMap[actionType] || 'executeMainScript';
+    }
+
+    generateScriptId(config) {
+        const actionType = config.actionType || 'general';
+        return `gcpScript${actionType.charAt(0).toUpperCase() + actionType.slice(1)}Active`;
+    }
+
+    generateHighlightCode() {
+        return `        // Highlight target element for debugging
+        if (targetElement) {
+            const originalStyle = targetElement.style.cssText;
+            targetElement.style.outline = '3px solid #ff0000';
+            targetElement.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            setTimeout(() => {
+                targetElement.style.cssText = originalStyle;
+            }, 3000);
+        }`;
+    }
+
+    generatePageDetectionFunctions(config) {
+        const functions = [];
+        
+        if (config.features.vdpDetection) {
+            functions.push(`/**
+ * Detects if current page is a Vehicle Detail Page (VDP)
+ * @returns {boolean} - True if current page is a VDP
+ */
+function isVDPPage() {
+    const currentUrl = window.location.href.toLowerCase();
+    const pathname = window.location.pathname.toLowerCase();
     
-    console.log('Generated script placeholder');
-    console.log('Configuration:', ${JSON.stringify(config, null, 2)});
+    const vdpPatterns = [
+        /\\/vdp\\//,
+        /\\/vehicle\\//,
+        /\\/inventory\\/.*\\/details/,
+        /\\/cars\\/.*\\/details/,
+        /\\/used\\/.*\\/details/,
+        /\\/new\\/.*\\/details/,
+        /\\/detail\\//,
+        /\\/vehicles\\/\\d+/,
+        /\\/inventory\\/\\d+/,
+        /\\/listing\\/\\d+/,
+        /\\/car\\/\\d+/,
+        /\\/auto\\/.*\\/\\d+/
+    ];
     
-})();`;
+    return vdpPatterns.some(pattern => pattern.test(pathname) || pattern.test(currentUrl));
+}`);
+        }
+
+        if (config.features.srpDetection) {
+            functions.push(`/**
+ * Detects if current page is a Search Results Page (SRP)
+ * @returns {boolean} - True if current page is a SRP
+ */
+function isSRPPage() {
+    const pathname = window.location.pathname.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    
+    const srpPatterns = [
+        /\\/inventory/,
+        /\\/search/,
+        /\\/vehicles/,
+        /\\/cars/,
+        /\\/used/,
+        /\\/new/
+    ];
+    
+    const srpParams = ['search', 'make', 'model', 'year', 'price'];
+    const hasSearchParams = srpParams.some(param => search.includes(param));
+    
+    return srpPatterns.some(pattern => pattern.test(pathname)) || hasSearchParams;
+}`);
+        }
+
+        return functions.join('\n\n');
+    }
+
+    generateNavigationHandling(config, functionName) {
+        return `    // Navigation change detection for SPA support
+    let currentUrl = window.location.href;
+    
+    function handleUrlChange() {
+        const newUrl = window.location.href;
+        if (newUrl !== currentUrl) {
+            currentUrl = newUrl;
+            ${config.features.debugging ? 'console.log("🔄 URL changed, re-executing script:", newUrl);' : ''}
+            setTimeout(executeScript, 100);
+        }
+    }
+    
+    // Listen for navigation events
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    
+    // Override history methods for SPA detection
+    const originalPushState = history.pushState;
+    history.pushState = function() {
+        originalPushState.apply(history, arguments);
+        handleUrlChange();
+    };
+    
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function() {
+        originalReplaceState.apply(history, arguments);
+        handleUrlChange();
+    };
+    
+    ${config.features.cleanup ? 'addCleanupFunction(() => { history.pushState = originalPushState; history.replaceState = originalReplaceState; });' : ''}`;
+    }
+
+    generateMutationObserver(config, functionName) {
+        return `    // DOM Mutation Observer for dynamic content
+    const observer = new MutationObserver((mutations) => {
+        let shouldRerun = false;
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                shouldRerun = true;
+            }
+        });
+        
+        if (shouldRerun) {
+            ${config.features.debugging ? 'console.log("🔄 DOM mutations detected, re-executing script");' : ''}
+            ${config.features.debouncing ? 'debounce(executeScript, 500)();' : 'setTimeout(executeScript, 500);'}
+        }
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    ${config.features.cleanup ? 'addCleanupFunction(() => observer.disconnect());' : ''}`;
+    }
+
+    generateIntervalMonitoring(config, functionName) {
+        return `    // Interval monitoring for periodic checks
+    const monitoringInterval = setInterval(() => {
+        ${config.features.debugging ? 'console.log("⏱️ Periodic check executing");' : ''}
+        executeScript();
+    }, 5000);
+    
+    ${config.features.cleanup ? 'addCleanupFunction(() => clearInterval(monitoringInterval));' : ''}`;
+    }
+
+    // Action-specific code generators
+
+    generateModifyCode(config) {
+        const modifyProperty = document.getElementById('modifyProperty')?.value || 'textContent';
+        const modifyValue = document.getElementById('modifyValue')?.value || '';
+        const customAttribute = document.getElementById('customAttribute')?.value || '';
+        
+        let code = '';
+        
+        if (modifyProperty === 'custom' && customAttribute) {
+            code = `        // Modify custom attribute
+        targetElement.setAttribute('${customAttribute}', \`${modifyValue}\`);
+        ${config.features.debugging ? `console.log("✅ Modified ${customAttribute} to:", \`${modifyValue}\`);` : ''}`;
+        } else {
+            code = `        // Modify element ${modifyProperty}
+        targetElement.${modifyProperty} = \`${modifyValue}\`;
+        ${config.features.debugging ? `console.log("✅ Modified ${modifyProperty} to:", \`${modifyValue}\`);` : ''}`;
+        }
+        
+        return code;
+    }
+
+    generateAddCode(config) {
+        const elementType = document.getElementById('elementType')?.value || 'div';
+        const addPosition = document.getElementById('addPosition')?.value || 'append';
+        const addContent = document.getElementById('addContent')?.value || '';
+        const addClasses = document.getElementById('addClasses')?.value || '';
+        
+        const isCustomHTML = elementType === 'custom';
+        
+        let code = '';
+        
+        if (isCustomHTML) {
+            code = `        // Add custom HTML content
+        const newElement = document.createElement('div');
+        newElement.innerHTML = \`${addContent}\`;
+        const elementToAdd = newElement.firstElementChild || newElement;`;
+        } else {
+            code = `        // Create new ${elementType} element
+        const elementToAdd = document.createElement('${elementType}');
+        elementToAdd.innerHTML = \`${addContent}\`;`;
+        }
+        
+        if (addClasses) {
+            code += `\n        elementToAdd.className = '${addClasses}';`;
+        }
+        
+        const positionMap = {
+            'append': 'targetElement.appendChild(elementToAdd);',
+            'prepend': 'targetElement.insertBefore(elementToAdd, targetElement.firstChild);',
+            'before': 'targetElement.parentNode.insertBefore(elementToAdd, targetElement);',
+            'after': 'targetElement.parentNode.insertBefore(elementToAdd, targetElement.nextSibling);'
+        };
+        
+        code += `
+        
+        // Insert element at specified position
+        ${positionMap[addPosition] || positionMap['append']}
+        ${config.features.debugging ? `console.log("✅ Added ${elementType} element");` : ''}`;
+        
+        return code;
+    }
+
+    generateRemoveCode(config) {
+        const removeAction = document.getElementById('removeAction')?.value || 'element';
+        const removeValue = document.getElementById('removeValue')?.value || '';
+        
+        let code = '';
+        
+        switch (removeAction) {
+            case 'element':
+                code = `        // Remove entire element
+        targetElement.remove();
+        ${config.features.debugging ? 'console.log("✅ Element removed");' : ''}`;
+                break;
+            case 'content':
+                code = `        // Remove element content
+        targetElement.innerHTML = '';
+        ${config.features.debugging ? 'console.log("✅ Element content cleared");' : ''}`;
+                break;
+            case 'attribute':
+                code = `        // Remove specific attribute
+        targetElement.removeAttribute('${removeValue}');
+        ${config.features.debugging ? `console.log("✅ Removed attribute: ${removeValue}");` : ''}`;
+                break;
+            case 'class':
+                code = `        // Remove CSS class
+        targetElement.classList.remove('${removeValue}');
+        ${config.features.debugging ? `console.log("✅ Removed class: ${removeValue}");` : ''}`;
+                break;
+        }
+        
+        return code;
+    }
+
+    generateStyleCode(config) {
+        const cssProperties = document.getElementById('cssProperties')?.value || '';
+        const importantStyles = document.getElementById('importantStyles')?.checked || false;
+        
+        const properties = cssProperties.split('\n')
+            .filter(line => line.trim())
+            .map(line => line.trim());
+        
+        let code = `        // Apply custom CSS styles
+        const styles = {`;
+        
+        properties.forEach(prop => {
+            const [property, value] = prop.split(':').map(s => s.trim());
+            if (property && value) {
+                const cleanValue = value.replace(/;$/, '');
+                const finalValue = importantStyles ? `${cleanValue} !important` : cleanValue;
+                const camelProperty = property.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+                code += `\n            '${camelProperty}': '${finalValue}',`;
+            }
+        });
+        
+        code += `
+        };
+        
+        Object.assign(targetElement.style, styles);
+        ${config.features.debugging ? 'console.log("✅ Applied custom styles:", styles);' : ''}`;
+        
+        return code;
+    }
+
+    generateEventCode(config) {
+        const eventType = document.getElementById('eventType')?.value || 'click';
+        const eventCode = document.getElementById('eventCode')?.value || '';
+        const preventDefault = document.getElementById('preventDefault')?.checked || false;
+        
+        let code = `        // Add ${eventType} event listener
+        const eventHandler = function(event) {
+            ${preventDefault ? 'event.preventDefault();' : ''}
+            ${config.features.debugging ? `console.log("🎯 ${eventType} event triggered");` : ''}
+            
+            try {
+                ${eventCode}
+            } catch (error) {
+                ${config.features.errorHandling ? 'console.error("Event handler error:", error);' : ''}
+            }
+        };
+        
+        targetElement.addEventListener('${eventType}', eventHandler);
+        ${config.features.cleanup ? 'addCleanupFunction(() => targetElement.removeEventListener(\'' + eventType + '\', eventHandler));' : ''}
+        ${config.features.debugging ? `console.log("✅ Added ${eventType} event listener");` : ''}`;
+        
+        return code;
+    }
+
+    generateWidgetCode(config) {
+        const widgetType = document.getElementById('widgetType')?.value || 'custom';
+        const widgetConfig = document.getElementById('widgetConfig')?.value || '';
+        const widgetContainer = document.getElementById('widgetContainer')?.value || 'widget-container';
+        
+        let code = '';
+        
+        switch (widgetType) {
+            case 'accutrade':
+                code = `        // Insert AccuTrade widget
+        const accuTradeContainer = document.createElement('div');
+        accuTradeContainer.id = '${widgetContainer}';
+        targetElement.appendChild(accuTradeContainer);
+        
+        // Load AccuTrade script
+        const script = document.createElement('script');
+        script.src = 'https://cashoffer.accu-trade.com/embed/embed.js';
+        script.onload = function() {
+            ${config.features.debugging ? 'console.log("✅ AccuTrade widget loaded");' : ''}
+        };
+        document.head.appendChild(script);`;
+                break;
+            case 'elfsight':
+                code = `        // Insert Elfsight widget
+        const elfsightWidget = document.createElement('div');
+        elfsightWidget.className = 'elfsight-app-${widgetConfig || 'widget-id'}';
+        targetElement.appendChild(elfsightWidget);
+        
+        // Load Elfsight script
+        const elfsightScript = document.createElement('script');
+        elfsightScript.src = 'https://apps.elfsight.com/p/platform.js';
+        elfsightScript.defer = true;
+        document.head.appendChild(elfsightScript);`;
+                break;
+            default:
+                code = `        // Insert custom widget
+        const widgetContainer = document.createElement('div');
+        widgetContainer.id = '${widgetContainer}';
+        widgetContainer.innerHTML = \`${widgetConfig}\`;
+        targetElement.appendChild(widgetContainer);`;
+        }
+        
+        code += `\n        ${config.features.debugging ? `console.log("✅ ${widgetType} widget inserted");` : ''}`;
+        
+        return code;
+    }
+
+    generateFormCode(config) {
+        const formAction = document.getElementById('formAction')?.value || 'intercept';
+        const formConfig = document.getElementById('formConfig')?.value || '';
+        
+        let code = '';
+        
+        switch (formAction) {
+            case 'intercept':
+                code = `        // Intercept form submission
+        if (targetElement.tagName === 'FORM') {
+            targetElement.addEventListener('submit', function(event) {
+                event.preventDefault();
+                ${config.features.debugging ? 'console.log("📋 Form submission intercepted");' : ''}
+                
+                const formData = new FormData(targetElement);
+                const data = Object.fromEntries(formData.entries());
+                ${config.features.debugging ? 'console.log("Form data:", data);' : ''}
+                
+                // Custom form handling
+                ${formConfig}
+            });
+        }`;
+                break;
+            case 'validate':
+                code = `        // Add form validation
+        if (targetElement.tagName === 'FORM') {
+            targetElement.addEventListener('submit', function(event) {
+                ${config.features.debugging ? 'console.log("🔍 Validating form");' : ''}
+                
+                // Custom validation logic
+                ${formConfig}
+            });
+        }`;
+                break;
+            case 'webhook':
+                code = `        // Send form data to webhook
+        if (targetElement.tagName === 'FORM') {
+            targetElement.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                const formData = new FormData(targetElement);
+                const data = Object.fromEntries(formData.entries());
+                
+                fetch('${formConfig}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(response => {
+                    ${config.features.debugging ? 'console.log("✅ Form data sent to webhook");' : ''}
+                }).catch(error => {
+                    ${config.features.errorHandling ? 'console.error("Webhook error:", error);' : ''}
+                });
+            });
+        }`;
+                break;
+            default:
+                code = `        // Custom form handling
+        ${formConfig}`;
+        }
+        
+        return code;
+    }
+
+    generateCustomCode(config) {
+        const customCode = document.getElementById('customCode')?.value || '';
+        const wrapInTryCatch = document.getElementById('wrapInTryCatch')?.checked || false;
+        
+        let code = '';
+        
+        if (wrapInTryCatch) {
+            code = `        // Custom JavaScript code (wrapped in try-catch)
+        try {
+            ${customCode}
+            ${config.features.debugging ? 'console.log("✅ Custom code executed successfully");' : ''}
+        } catch (error) {
+            ${config.features.errorHandling ? 'console.error("Custom code error:", error);' : ''}
+        }`;
+        } else {
+            code = `        // Custom JavaScript code
+        ${customCode}
+        ${config.features.debugging ? 'console.log("✅ Custom code executed");' : ''}`;
+        }
+        
+        return code;
     }
 
     minifyScript(script) {
