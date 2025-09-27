@@ -138,6 +138,39 @@ body {
     border: 1px solid #e9ecef;
 }
 
+.selector-preview {
+    margin-top: 20px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.selector-preview label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.selector-preview-output {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.selector-preview-output code {
+    background: none;
+    color: #667eea;
+    font-weight: 600;
+}
+
 .builder-header {
     display: flex;
     justify-content: space-between;

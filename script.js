@@ -225,6 +225,17 @@ class ScriptBuilder {
         
         conditionsList.insertAdjacentHTML('beforeend', conditionHTML);
         this.conditions.push(conditionId);
+        
+        // Add event listeners to the new condition for real-time preview updates
+        const newCondition = document.querySelector(`[data-condition-id="${conditionId}"]`);
+        const inputs = newCondition.querySelectorAll('select, input');
+        inputs.forEach(input => {
+            input.addEventListener('change', () => this.updateSelectorPreview());
+            input.addEventListener('input', () => this.updateSelectorPreview());
+        });
+        
+        // Update preview
+        this.updateSelectorPreview();
     }
 
     removeCondition(conditionId) {
@@ -232,6 +243,20 @@ class ScriptBuilder {
         if (conditionElement) {
             conditionElement.remove();
             this.conditions = this.conditions.filter(id => id !== conditionId);
+            this.updateSelectorPreview();
+        }
+    }
+
+    updateSelectorPreview() {
+        const selectorPreview = document.getElementById('selectorPreview');
+        if (!selectorPreview) return;
+        
+        const selector = this.buildAdvancedSelector();
+        
+        if (selector) {
+            selectorPreview.innerHTML = `<code>${selector}</code>`;
+        } else {
+            selectorPreview.innerHTML = `<code style="color: #6c757d;">No conditions added yet</code>`;
         }
     }
 
@@ -512,11 +537,18 @@ class ScriptBuilder {
 
     validateConfig(config) {
         // Basic validation
-        if (!config.selector && config.selectorType !== 'advanced') {
-            return {
-                isValid: false,
-                message: 'Please enter a CSS selector or use the Advanced Builder'
-            };
+        if (!config.selector) {
+            if (config.selectorType === 'advanced') {
+                return {
+                    isValid: false,
+                    message: 'Please add at least one condition in the Advanced Builder'
+                };
+            } else {
+                return {
+                    isValid: false,
+                    message: 'Please enter a CSS selector or use the Advanced Builder'
+                };
+            }
         }
         
         // Action-specific validation
@@ -569,9 +601,18 @@ class ScriptBuilder {
     }
 
     getScriptConfig() {
+        const selectorType = document.getElementById('selectorType').value;
+        let selector = '';
+        
+        if (selectorType === 'advanced') {
+            selector = this.buildAdvancedSelector();
+        } else {
+            selector = document.getElementById('cssSelector').value.trim();
+        }
+        
         return {
-            selector: document.getElementById('cssSelector').value.trim(),
-            selectorType: document.getElementById('selectorType').value,
+            selector: selector,
+            selectorType: selectorType,
             fallbackSelectors: document.getElementById('fallbackSelectors').value
                 .split('\n')
                 .map(s => s.trim())
@@ -659,7 +700,7 @@ class ScriptBuilder {
 ${this.generateFeaturesList(config)}
  * 
  * TECHNICAL DETAILS:
- * - Target Selector: ${config.selector || 'Not specified'}
+ * - Target Selector: ${config.selector ? config.selector.replace(/"/g, '\\"') : 'Not specified'}
  * - Selector Type: ${config.selectorType}
  * - Action Type: ${config.actionType || 'None'}
  * 
@@ -687,7 +728,15 @@ function findTargetElement(primarySelector, fallbackSelectors = []) {
     try {
         // Try primary selector first
         if (primarySelector) {
-            const element = document.querySelector(primarySelector);
+            let element = null;
+            
+            // Handle special text-based selectors that can't be done with pure CSS
+            if (primarySelector.includes('[data-text-')) {
+                element = findElementByTextContent(primarySelector);
+            } else {
+                element = document.querySelector(primarySelector);
+            }
+            
             if (element) {
                 ${config.features.debugging ? 'console.log("✅ Found element with primary selector:", primarySelector, element);' : ''}
                 return element;
@@ -698,7 +747,14 @@ function findTargetElement(primarySelector, fallbackSelectors = []) {
         // Try fallback selectors
         for (const fallback of fallbackSelectors) {
             if (fallback.trim()) {
-                const element = document.querySelector(fallback.trim());
+                let element = null;
+                
+                if (fallback.includes('[data-text-')) {
+                    element = findElementByTextContent(fallback.trim());
+                } else {
+                    element = document.querySelector(fallback.trim());
+                }
+                
                 if (element) {
                     ${config.features.debugging ? 'console.log("✅ Found element with fallback selector:", fallback, element);' : ''}
                     return element;
@@ -713,6 +769,57 @@ function findTargetElement(primarySelector, fallbackSelectors = []) {
         ${config.features.errorHandling ? 'console.error("Error finding target element:", error);' : ''}
         return null;
     }
+}
+
+/**
+ * Finds elements based on text content (for advanced selector builder)
+ * @param {string} selector - The pseudo selector with text conditions
+ * @returns {Element|null} - Found element or null
+ */
+function findElementByTextContent(selector) {
+    // Parse the text condition from the selector
+    const textConditions = {
+        contains: selector.match(/\\[data-text-contains="([^"]+)"\\]/),
+        equals: selector.match(/\\[data-text-equals="([^"]+)"\\]/),
+        starts: selector.match(/\\[data-text-starts="([^"]+)"\\]/),
+        ends: selector.match(/\\[data-text-ends="([^"]+)"\\]/)
+    };
+    
+    let condition = null;
+    let searchText = '';
+    
+    for (const [type, match] of Object.entries(textConditions)) {
+        if (match) {
+            condition = type;
+            searchText = match[1];
+            break;
+        }
+    }
+    
+    if (!condition || !searchText) return null;
+    
+    // Search all elements for matching text content
+    const allElements = document.querySelectorAll('*');
+    for (const element of allElements) {
+        const textContent = element.textContent.trim();
+        
+        switch (condition) {
+            case 'contains':
+                if (textContent.includes(searchText)) return element;
+                break;
+            case 'equals':
+                if (textContent === searchText) return element;
+                break;
+            case 'starts':
+                if (textContent.startsWith(searchText)) return element;
+                break;
+            case 'ends':
+                if (textContent.endsWith(searchText)) return element;
+                break;
+        }
+    }
+    
+    return null;
 }`);
 
         // Add page detection utilities if needed
@@ -780,7 +887,7 @@ function ${functionName}() {
         
         // Find target element(s)
         const targetElement = findTargetElement(
-            "${config.selector || ''}",
+            ${JSON.stringify(config.selector || '')},
             ${JSON.stringify(config.fallbackSelectors || [])}
         );
         
@@ -939,7 +1046,8 @@ function ${functionName}() {
     }
 
     generatePurposeDescription(config) {
-        let purpose = `This script targets elements using "${config.selector || 'unspecified selector'}" and `;
+        const selectorText = config.selector ? config.selector.replace(/"/g, '\\"') : 'unspecified selector';
+        let purpose = `This script targets elements using "${selectorText}" and `;
         
         switch (config.actionType) {
             case 'modify':
@@ -1421,6 +1529,166 @@ function isSRPPage() {
         return code;
     }
 
+    // Advanced Selector Builder Functions
+
+    buildAdvancedSelector() {
+        const conditions = document.querySelectorAll('.condition-item');
+        const selectorParts = [];
+        
+        console.log('Building advanced selector from', conditions.length, 'conditions');
+        
+        conditions.forEach((condition, index) => {
+            const attribute = condition.querySelector('.condition-attribute').value;
+            const operator = condition.querySelector('.condition-operator').value;
+            const value = condition.querySelector('.condition-value').value;
+            
+            console.log(`Condition ${index + 1}:`, { attribute, operator, value });
+            
+            if (attribute && value) {
+                const selectorPart = this.buildConditionSelector(attribute, operator, value);
+                if (selectorPart) {
+                    selectorParts.push(selectorPart);
+                    console.log(`Generated selector part:`, selectorPart);
+                }
+            }
+        });
+        
+        // Combine all conditions - for now, we'll use a simple approach
+        // In the future, this could be enhanced to support AND/OR logic
+        let finalSelector = '';
+        
+        if (selectorParts.length === 0) {
+            finalSelector = '';
+        } else if (selectorParts.length === 1) {
+            finalSelector = selectorParts[0];
+        } else {
+            // For multiple conditions, we'll create a selector that matches all conditions
+            // This creates a more specific selector
+            finalSelector = selectorParts.join('');
+        }
+        
+        console.log('Final advanced selector:', finalSelector);
+        return finalSelector;
+    }
+
+    buildConditionSelector(attribute, operator, value) {
+        switch (attribute) {
+            case 'class':
+                return this.buildClassSelector(operator, value);
+            case 'id':
+                return this.buildIdSelector(operator, value);
+            case 'tag':
+                return this.buildTagSelector(operator, value);
+            case 'attribute':
+                return this.buildAttributeSelector(operator, value);
+            case 'text':
+                return this.buildTextSelector(operator, value);
+            case 'parent':
+                return this.buildParentSelector(operator, value);
+            default:
+                return '';
+        }
+    }
+
+    buildClassSelector(operator, value) {
+        switch (operator) {
+            case 'contains':
+                return `[class*="${value}"]`;
+            case 'equals':
+                return `.${value}`;
+            case 'starts':
+                return `[class^="${value}"], [class*=" ${value}"]`;
+            case 'ends':
+                return `[class$="${value}"], [class*="${value} "]`;
+            case 'exists':
+                return '[class]';
+            case 'not-exists':
+                return ':not([class])';
+            default:
+                return `.${value}`;
+        }
+    }
+
+    buildIdSelector(operator, value) {
+        switch (operator) {
+            case 'contains':
+                return `[id*="${value}"]`;
+            case 'equals':
+                return `#${value}`;
+            case 'starts':
+                return `[id^="${value}"]`;
+            case 'ends':
+                return `[id$="${value}"]`;
+            case 'exists':
+                return '[id]';
+            case 'not-exists':
+                return ':not([id])';
+            default:
+                return `#${value}`;
+        }
+    }
+
+    buildTagSelector(operator, value) {
+        switch (operator) {
+            case 'equals':
+                return value.toLowerCase();
+            case 'exists':
+                return '*';
+            default:
+                return value.toLowerCase();
+        }
+    }
+
+    buildAttributeSelector(operator, value) {
+        // Expect format like "data-attr" or "data-attr=somevalue"
+        const [attrName, attrValue] = value.includes('=') ? value.split('=') : [value, ''];
+        
+        switch (operator) {
+            case 'contains':
+                return attrValue ? `[${attrName}*="${attrValue}"]` : `[${attrName}]`;
+            case 'equals':
+                return attrValue ? `[${attrName}="${attrValue}"]` : `[${attrName}]`;
+            case 'starts':
+                return attrValue ? `[${attrName}^="${attrValue}"]` : `[${attrName}]`;
+            case 'ends':
+                return attrValue ? `[${attrName}$="${attrValue}"]` : `[${attrName}]`;
+            case 'exists':
+                return `[${attrName}]`;
+            case 'not-exists':
+                return `:not([${attrName}])`;
+            default:
+                return `[${attrName}]`;
+        }
+    }
+
+    buildTextSelector(operator, value) {
+        // CSS doesn't have direct text content selectors, so we'll use a pseudo approach
+        // This will need to be handled differently in the generated script
+        switch (operator) {
+            case 'contains':
+                return `*[data-text-contains="${value}"]`;
+            case 'equals':
+                return `*[data-text-equals="${value}"]`;
+            case 'starts':
+                return `*[data-text-starts="${value}"]`;
+            case 'ends':
+                return `*[data-text-ends="${value}"]`;
+            default:
+                return `*[data-text-contains="${value}"]`;
+        }
+    }
+
+    buildParentSelector(operator, value) {
+        switch (operator) {
+            case 'contains':
+                return `${value} *`;
+            case 'equals':
+                return `${value} > *`;
+            default:
+                return `${value} *`;
+        }
+    }
+
     minifyScript(script) {
         // Basic minification - remove comments and extra whitespace
         return script
@@ -1496,18 +1764,32 @@ function isSRPPage() {
     }
 
     validateSelector() {
-        const selector = document.getElementById('cssSelector').value;
-        const testUrl = document.getElementById('testUrl').value;
+        const selectorType = document.getElementById('selectorType').value;
+        let selector = '';
+        
+        if (selectorType === 'advanced') {
+            selector = this.buildAdvancedSelector();
+        } else {
+            selector = document.getElementById('cssSelector').value;
+        }
         
         if (!selector) {
-            this.showTestResult('Please enter a CSS selector', 'error');
+            if (selectorType === 'advanced') {
+                this.showTestResult('Please add at least one condition in the Advanced Builder', 'error');
+            } else {
+                this.showTestResult('Please enter a CSS selector', 'error');
+            }
             return;
         }
         
         try {
-            // Test if selector is valid CSS
-            document.querySelector(selector);
-            this.showTestResult('Selector syntax is valid', 'success');
+            // Test if selector is valid CSS (skip text-based pseudo selectors)
+            if (selector.includes('[data-text-')) {
+                this.showTestResult('Advanced text-based selector - will be handled by custom function', 'success');
+            } else {
+                document.querySelector(selector);
+                this.showTestResult('Selector syntax is valid', 'success');
+            }
         } catch (error) {
             this.showTestResult(`Invalid selector: ${error.message}`, 'error');
         }
