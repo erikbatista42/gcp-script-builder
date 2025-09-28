@@ -1795,8 +1795,47 @@ function isSRPPage() {
         }
     }
 
-    testScript() {
-        this.showTestResult('Script testing functionality will be implemented in future versions', 'info');
+    async testScript() {
+        const testUrl = document.getElementById('testUrl').value.trim();
+        const scriptOutput = document.getElementById('scriptOutput');
+        const script = scriptOutput.textContent;
+        
+        // Validate inputs
+        if (!testUrl) {
+            this.showTestResult('Please enter a test URL', 'error');
+            return;
+        }
+        
+        if (!script || script.includes('Your generated script will appear here')) {
+            this.showTestResult('Please generate a script first', 'error');
+            return;
+        }
+        
+        try {
+            // Step 1: Copy script to clipboard
+            await navigator.clipboard.writeText(script);
+            this.showTestResult('✅ Script copied to clipboard!', 'success');
+            
+            // Step 2: Open URL directly in new tab
+            const newTab = window.open(testUrl, '_blank');
+            
+            if (newTab) {
+                newTab.focus();
+                this.showTestResult('🎯 Test tab opened! Open console (F12) and paste your script (Ctrl+V).', 'success');
+            } else {
+                // Fallback if popup is blocked
+                this.showTestResult('❌ Popup blocked. Please allow popups and try again, or manually open: ' + testUrl, 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error in test script:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                this.showTestResult('❌ Clipboard access denied. Please copy the script manually and open: ' + testUrl, 'error');
+            } else {
+                this.showTestResult('❌ Error testing script: ' + error.message, 'error');
+            }
+        }
     }
 
     showTestResult(message, type) {
