@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Script Builder - Generate Custom JavaScript Scripts</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Header with Navigation -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                <h1>JS Script Builder</h1>
+            </div>
+            <nav class="nav-buttons">
+                <button id="historyBtn" class="btn btn-secondary" title="View Generation History">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                    <span class="history-count" id="historyCount">0</span>
+                </button>
+                <button id="templatesBtn" class="btn btn-secondary" title="Browse Templates">
+                    <i class="fas fa-file-code"></i>
+                    <span>Templates</span>
+                </button>
+                <button id="settingsBtn" class="btn btn-secondary" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Left Panel - Configuration -->
+        <div class="config-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-sliders-h"></i> Script Configuration</h2>
+            </div>
+            
+            <div class="panel-content">
+            <!-- Script Information Card -->
+            <div class="config-card">
+                <section class="config-section">
+                    <h3>📝 Script Information</h3>
+                    <div class="form-group">
+                        <label for="scriptName">Script Name <span class="required">*</span></label>
+                        <input type="text" id="scriptName" placeholder="e.g., modify-hero-text-1234-V1">
+                        <small class="help-text">Follow naming convention: feature-description-dealerID-version</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="scriptDescription">Description</label>
+                        <textarea id="scriptDescription" rows="3" placeholder="Describe what this script does..."></textarea>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Target Element Card -->
+            <div class="config-card">
+                <section class="config-section">
+                    <h3>🎯 Target Element</h3>
+                    
+                    <!-- Selector Type Tabs -->
+                    <div class="selector-tabs">
+                        <button class="tab-btn active" data-tab="css">CSS Selector</button>
+                        <button class="tab-btn" data-tab="xpath">XPath</button>
+                        <button class="tab-btn" data-tab="advanced">Advanced Builder</button>
+                    </div>
+                    
+                    <!-- CSS Selector Tab -->
+                    <div class="tab-content" id="css-tab" style="display: block;">
+                    <div class="form-group">
+                        <label for="targetSelector">CSS Selector <span class="required">*</span></label>
+                        <input type="text" id="targetSelector" placeholder="e.g., .hero-title, #main-header">
+                    </div>
+                    </div>
+                    
+                    <!-- XPath Tab -->
+                    <div class="tab-content" id="xpath-tab" style="display: none;">
+                        <div class="form-group">
+                            <label for="xpathSelector">XPath Expression <span class="required">*</span></label>
+                            <input type="text" id="xpathSelector" placeholder="e.g., //div[@class='hero']//h1">
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Builder Tab -->
+                    <div class="tab-content" id="advanced-tab" style="display: none;">
+                        <div class="advanced-selector-builder">
+                            <div class="builder-header">
+                                <h4>Advanced Selector Builder</h4>
+                                <button id="addCondition" class="btn btn-primary btn-small">
+                                    <i class="fas fa-plus"></i> Add Condition
+                                </button>
+                            </div>
+                            
+                            <div class="conditions-container" id="conditionsContainer">
+                                <!-- Conditions will be added here dynamically -->
+                            </div>
+                            
+                            <div class="selector-preview">
+                                <h4>Generated Selector:</h4>
+                                <div class="selector-output" id="selectorOutput">
+                                    <code id="generatedSelector">Add conditions to generate selector</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Common Options -->
+                    <div class="form-group">
+                        <label for="fallbackSelectors">Fallback Selectors</label>
+                        <textarea id="fallbackSelectors" rows="2" placeholder="One per line (works with any selector type)"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="waitForElement">
+                        <label for="waitForElement">Wait for element to appear</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="multipleElements">
+                        <label for="multipleElements">Apply to all matching elements</label>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Action Type Card -->
+            <div class="config-card">
+                <section class="config-section">
+                    <h3>🔥 Action Type</h3>
+                    <div class="form-group">
+                        <select id="actionType">
+                            <option value="">Select an action...</option>
+                            <option value="modify-text">Modify Text Content</option>
+                            <option value="modify-html">Modify HTML</option>
+                            <option value="add-element">Add New Element</option>
+                            <option value="remove-element">Remove Element</option>
+                            <option value="add-class">Add CSS Class</option>
+                            <option value="remove-class">Remove CSS Class</option>
+                            <option value="set-attribute">Set Attribute</option>
+                            <option value="apply-styles">Apply CSS Styles</option>
+                            <option value="add-listener">Add Event Listener</option>
+                            <option value="insert-widget">Insert Widget</option>
+                            <option value="toggle-visibility">Toggle Visibility</option>
+                            <option value="scroll-to">Scroll To Element</option>
+                            <option value="clone-element">Clone Element</option>
+                            <option value="wrap-element">Wrap Element</option>
+                            <option value="unwrap-element">Unwrap Element</option>
+                            <option value="form-manipulation">Form Manipulation</option>
+                            <option value="ajax-request">AJAX Request</option>
+                            <option value="cookie-management">Cookie Management</option>
+                            <option value="local-storage">Local Storage</option>
+                            <option value="custom">Custom JavaScript</option>
+                        </select>
+                    </div>
+                    <div id="actionOptions" class="action-options">
+                        <!-- Dynamic options based on action type -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Features Card -->
+            <div class="config-card">
+                <section class="config-section">
+                    <h3>🚀 Script Features</h3>
+                    
+                    <!-- Core Features -->
+                    <div class="feature-category">
+                        <h4>CORE FEATURES</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="spaFriendly" checked>
+                                <label for="spaFriendly">SPA Friendly <i class="fas fa-info-circle" title="Handle Single Page Application navigation"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="domReady" checked>
+                                <label for="domReady">DOM Ready Handling <i class="fas fa-info-circle" title="Wait for DOM to be fully loaded"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="errorHandling" checked>
+                                <label for="errorHandling">Error Handling <i class="fas fa-info-circle" title="Comprehensive error recovery"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="preventDuplicates" checked>
+                                <label for="preventDuplicates">Prevent Duplicates <i class="fas fa-info-circle" title="Prevent duplicate script execution"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Features -->
+                    <div class="feature-category">
+                        <h4>PERFORMANCE</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="debouncing">
+                                <label for="debouncing">Debouncing <i class="fas fa-info-circle" title="Prevent rapid re-execution"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="elementCaching">
+                                <label for="elementCaching">Element Caching <i class="fas fa-info-circle" title="Cache DOM elements for performance"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="resourceCleanup">
+                                <label for="resourceCleanup">Resource Cleanup <i class="fas fa-info-circle" title="Clean up resources on page unload"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Monitoring Features -->
+                    <div class="feature-category">
+                        <h4>MONITORING</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="mutationObserver">
+                                <label for="mutationObserver">DOM Mutation Observer <i class="fas fa-info-circle" title="Watch for DOM changes"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="intervalMonitoring">
+                                <label for="intervalMonitoring">Interval Monitoring <i class="fas fa-info-circle" title="Periodic checking for elements"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="urlChangeMonitoring">
+                                <label for="urlChangeMonitoring">URL Change Monitoring <i class="fas fa-info-circle" title="Monitor URL changes"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Development Features -->
+                    <div class="feature-category">
+                        <h4>DEVELOPMENT</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="debugMode">
+                                <label for="debugMode">Debug Mode <i class="fas fa-info-circle" title="Enable debug output"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="consoleLogging">
+                                <label for="consoleLogging">Console Logging <i class="fas fa-info-circle" title="Log actions to console"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="elementHighlighting">
+                                <label for="elementHighlighting">Element Highlighting <i class="fas fa-info-circle" title="Highlight modified elements"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Widget Integration -->
+                    <div class="feature-category">
+                        <h4>WIDGET INTEGRATION</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="widgetLoader">
+                                <label for="widgetLoader">Widget Loader <i class="fas fa-info-circle" title="Load external widgets"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="asyncLoading">
+                                <label for="asyncLoading">Async Loading <i class="fas fa-info-circle" title="Load resources asynchronously"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="fallbackMechanisms">
+                                <label for="fallbackMechanisms">Fallback Mechanisms <i class="fas fa-info-circle" title="Fallback for failed widget loads"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Page Detection -->
+                    <div class="feature-category">
+                        <h4>PAGE DETECTION</h4>
+                        <div class="features-grid">
+                            <div class="form-check">
+                                <input type="checkbox" id="vdpDetection" checked>
+                                <label for="vdpDetection">VDP Detection <i class="fas fa-info-circle" title="Detect Vehicle Detail Pages"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="srpDetection">
+                                <label for="srpDetection">SRP Detection <i class="fas fa-info-circle" title="Detect Search Results Pages"></i></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="customPageDetection">
+                                <label for="customPageDetection">Custom Page Detection <i class="fas fa-info-circle" title="Custom page detection logic"></i></label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            </div>
+
+            <!-- Generate Button -->
+            <div class="generate-section">
+                <button id="generateBtn" class="btn btn-primary btn-large">
+                    <i class="fas fa-magic"></i> Generate Script
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="right-column">
+            <!-- Output Panel -->
+            <div class="output-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-file-code"></i> Generated Script</h2>
+                <div class="output-actions">
+                    <button id="editBtn" class="btn btn-small" disabled>
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button id="copyBtn" class="btn btn-small" disabled>
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <button id="downloadBtn" class="btn btn-small" disabled>
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button id="saveToHistoryBtn" class="btn btn-small" disabled>
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="code-output" id="codeOutputContainer">
+                    <pre id="codeDisplay"><code id="generatedCode" class="language-javascript">// Your generated script will appear here...
+// 
+// Configure your settings in the left panel and click "Generate Script"</code></pre>
+                    <textarea id="codeEditor" class="code-editor" style="display: none;"></textarea>
+                </div>
+                <div class="output-info">
+                    <div id="scriptStats" class="script-stats">
+                        <!-- Script statistics will appear here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test Script Section -->
+            <div class="testing-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-vial"></i> Test Script</h2>
+                </div>
+                <div class="testing-content">
+                    <div class="form-group">
+                        <label for="testUrl">Test URL (optional):</label>
+                        <input type="text" id="testUrl" placeholder="https://example.com/" value="">
+                    </div>
+                    <div class="testing-actions">
+                        <button id="validateSelectorBtn" class="btn btn-secondary">
+                            <i class="fas fa-check-circle"></i> Validate Syntax
+                        </button>
+                        <button id="testScriptBtn" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Test Script
+                        </button>
+                    </div>
+                    <div id="validationResults" class="validation-results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Script Generation History</h2>
+                <button class="modal-close" id="closeHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- History Controls -->
+                <div class="history-controls">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="historySearch" placeholder="Search scripts by name, dealer ID, or description...">
+                    </div>
+                    <div class="history-actions">
+                        <select id="historySort">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                            <option value="name-asc">Name A-Z</option>
+                            <option value="name-desc">Name Z-A</option>
+                        </select>
+                        <button id="exportHistory" class="btn btn-secondary">
+                            <i class="fas fa-file-export"></i> Export All
+                        </button>
+                        <button id="clearHistory" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- History List -->
+                <div id="historyList" class="history-list">
+                    <!-- History items will be dynamically loaded here -->
+                </div>
+                
+                <!-- Empty State -->
+                <div id="historyEmpty" class="empty-state" style="display: none;">
+                    <i class="fas fa-inbox fa-3x"></i>
+                    <h3>No Scripts Generated Yet</h3>
+                    <p>Your script generation history will appear here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Preview Modal -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="previewTitle">Script Preview</h2>
+                <button class="modal-close" id="closePreviewModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-info">
+                    <div id="previewMetadata"></div>
+                </div>
+                <div class="preview-actions">
+                    <button id="previewCopy" class="btn btn-primary">
+                        <i class="fas fa-copy"></i> Copy Script
+                    </button>
+                    <button id="previewDownload" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button id="previewRestore" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Restore to Editor
+                    </button>
+                    <button id="previewDelete" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+                <div class="code-preview">
+                    <pre><code id="previewCode" class="language-javascript"></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="toast-icon"></i>
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="utils.js"></script>
+    <script src="history.js"></script>
+    <script src="script-builder.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
